@@ -1,27 +1,93 @@
-// The module 'vscode' contains the VS Code extensibility API
-// Import the module and reference it with the alias vscode in your code below
 import * as vscode from 'vscode';
+import { TextEditor, TextEditorEdit, Position, TextLine } from 'vscode';
+import { type } from 'os';
 
-// this method is called when your extension is activated
-// your extension is activated the very first time the command is executed
 export function activate(context: vscode.ExtensionContext) {
-
-	// Use the console to output diagnostic information (console.log) and errors (console.error)
-	// This line of code will only be executed once when your extension is activated
 	console.log('Congratulations, your extension "vscode-plugin-wanke" is now active!');
 
-	// The command has been defined in the package.json file
-	// Now provide the implementation of the command with registerCommand
-	// The commandId parameter must match the command field in package.json
-	let disposable = vscode.commands.registerCommand('extension.helloWorld', () => {
-		// The code you place here will be executed every time your command is executed
+	let disposable = vscode.commands.registerTextEditorCommand('jiangyu.format', (textEditor: TextEditor, edit: TextEditorEdit) => {
 
-		// Display a message box to the user
-		vscode.window.showInformationMessage('Hello World!');
+		let importList: string[] = []
+		for (let line = 0; line < textEditor.document.lineCount; line++) {
+			let textLine: TextLine = textEditor.document.lineAt(line)
+			if (textLine.text.indexOf('import ') != -1) {
+				importList.push(textLine.text)
+			}
+		}
+
+		for (let line = 0; line < textEditor.document.lineCount; line++) {
+			let textLine: TextLine = textEditor.document.lineAt(line)
+			if (textLine.text.indexOf('import ') != -1) {
+				edit.delete(textLine.range)
+			}
+		}
+
+		let thirdModules = []
+		let localModules = []
+		let helpAndContants = []
+		let types = []
+
+		for (let importStr of importList) {
+			let match = importStr.match(/'(.*)'/)
+			if (match && match[1]) {
+				let from = match[1]
+				console.log('from ------ ' + from)
+
+				if (from.indexOf('./') == -1 && from.indexOf('../') == -1) {
+					thirdModules.push(importStr)
+					continue
+				}
+
+				if (from.indexOf('type') != -1) {
+					types.push(importStr)
+					continue
+				}
+				if (from.indexOf('./') != -1 || from.indexOf('../') != -1) {
+					let match1 = from.match(/\/(\w*)$/)
+					if (match1 && match1[1]) {
+						let moduleName = match1[1]
+						console.log('moduleName ---- ' + moduleName)
+						if (moduleName.charAt(0) > 'a' && moduleName.charAt(0) < 'z') {
+							helpAndContants.push(importStr)
+						}
+						if (moduleName.charAt(0) > 'A' && moduleName.charAt(0) < 'Z') {
+							localModules.push(importStr)
+						}
+					}
+					continue
+				}
+			}
+		}
+
+		let line = 0
+
+		for (let txt of thirdModules) {
+			edit.insert(new Position(line++, 0), `${txt}`)
+		}
+		if (localModules.length > 0) {
+			edit.insert(new Position(line++, 0), ``)
+			for (let txt of localModules) {
+				edit.insert(new Position(line++, 0), `${txt}`)
+			}
+		}
+
+		if (helpAndContants.length > 0) {
+			edit.insert(new Position(line++, 0), ``)
+			for (let txt of helpAndContants) {
+				edit.insert(new Position(line++, 0), `${txt}`)
+			}
+		}
+
+		if (types.length > 0) {
+			edit.insert(new Position(line++, 0), ``)
+			for (let txt of types) {
+				edit.insert(new Position(line++, 0), `${txt}`)
+			}
+		}
+
 	});
 
 	context.subscriptions.push(disposable);
 }
 
-// this method is called when your extension is deactivated
-export function deactivate() {}
+export function deactivate() { }
